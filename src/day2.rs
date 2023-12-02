@@ -92,7 +92,7 @@ fn test_run() {
     let input = fs::read_to_string("src/inputs/aoc2s.in").unwrap();
     assert_eq!(solution(&input), (8, 2286));
     let input = fs::read_to_string("src/inputs/aoc2.in").unwrap();
-    assert_eq!(solution(&input), (2101, 0));
+    assert_eq!(solution(&input), (2101, 58269));
 }
 
 pub fn run() -> (String, String) {
