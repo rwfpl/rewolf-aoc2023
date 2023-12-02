@@ -6,11 +6,10 @@ use rayon::prelude::*;
 use std::{env, time::Instant};
 
 mod day1;
+mod day2;
 
 fn main() {
-    let days = [
-        (1, day1::run as fn() -> (String, String)),
-    ];
+    let days = [(1, day1::run as fn() -> (String, String)), (2, day2::run)];
     let now = Instant::now();
     let day = env::args()
         .nth(1)
