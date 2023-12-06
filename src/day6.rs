@@ -1,4 +1,4 @@
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 struct Race {
     time: u64,
@@ -16,6 +16,7 @@ impl Race {
 
     fn get_win_number(&self) -> usize {
         (1..self.time)
+            .into_par_iter()
             .filter(|t| self.hold(*t) > self.distance)
             .count()
     }
