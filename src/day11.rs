@@ -2,7 +2,7 @@ use std::{cmp::minmax, fs};
 
 use itertools::Itertools;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 struct Pos(usize, usize);
 
 #[derive(Debug)]
