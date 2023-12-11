@@ -1,4 +1,4 @@
-use std::{cmp::minmax, collections::HashSet, fs};
+use std::{cmp::minmax, fs};
 
 use itertools::Itertools;
 
@@ -23,9 +23,9 @@ impl From<char> for Tile {
 
 #[derive(Debug)]
 struct Cosmos {
-    empty_rows: HashSet<usize>,
-    empty_cols: HashSet<usize>,
-    galaxies: HashSet<Pos>,
+    empty_rows: Vec<usize>,
+    empty_cols: Vec<usize>,
+    galaxies: Vec<Pos>,
 }
 
 impl From<&str> for Cosmos {
@@ -34,23 +34,26 @@ impl From<&str> for Cosmos {
             .lines()
             .map(|l| l.chars().map(Tile::from).collect_vec())
             .collect_vec();
-        let empty_rows: HashSet<usize> = HashSet::from_iter(
-            g.iter()
-                .enumerate()
-                .filter(|(_, row)| row.iter().all(|r| matches!(r, Tile::Empty)))
-                .map(|(i, _)| i),
-        );
-        let empty_cols: HashSet<usize> = HashSet::from_iter(
-            (0..g[0].len()).filter(|i| (0..g.len()).all(|j| matches!(g[j][*i], Tile::Empty))),
-        );
-        let galaxies: HashSet<Pos> =
-            HashSet::from_iter(g.iter().enumerate().flat_map(|(i, row)| {
+        let empty_rows = g
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.iter().all(|r| matches!(r, Tile::Empty)))
+            .map(|(i, _)| i)
+            .collect_vec();
+        let empty_cols = (0..g[0].len())
+            .filter(|i| (0..g.len()).all(|j| matches!(g[j][*i], Tile::Empty)))
+            .collect_vec();
+        let galaxies = g
+            .iter()
+            .enumerate()
+            .flat_map(|(i, row)| {
                 row.iter()
                     .enumerate()
                     .filter(|(_, t)| matches!(t, Tile::Galaxy))
                     .map(|(j, _)| Pos(j, i))
                     .collect_vec()
-            }));
+            })
+            .collect_vec();
         Self {
             empty_rows,
             empty_cols,
@@ -59,7 +62,7 @@ impl From<&str> for Cosmos {
     }
 }
 
-fn calc_dist(v1: usize, v2: usize, exp: usize, m: &HashSet<usize>) -> usize {
+fn calc_dist(v1: usize, v2: usize, exp: usize, m: &[usize]) -> usize {
     let [vmin, vmax] = minmax(v1, v2);
     let c = m.iter().filter(|col| (vmin..vmax).contains(col)).count();
     let exp_c = if c != 0 { c * (exp - 1) } else { 0 };
