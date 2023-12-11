@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use std::{env, time::Instant};
 
 mod day1;
+mod day10;
 mod day2;
 mod day3;
 mod day4;
@@ -28,6 +29,7 @@ fn main() {
         (7, day7::run),
         (8, day8::run),
         (9, day9::run),
+        (10, day10::run),
     ];
     let now = Instant::now();
     let day = env::args()
