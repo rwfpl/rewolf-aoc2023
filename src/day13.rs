@@ -42,10 +42,8 @@ impl<const SMUDGE: usize> From<&str> for Pattern<SMUDGE> {
 impl<const SMUDGE: usize> Pattern<SMUDGE> {
     fn vec_diff(&self, v1: &[Tile], v2: &[Tile]) -> usize {
         v1.iter()
-            .interleave(v2)
-            .chunks(2)
-            .into_iter()
-            .map(|mut p| p.all_equal())
+            .zip(v2)
+            .map(|(t1, t2)| t1 == t2)
             .filter(|p| !*p)
             .count()
     }
@@ -75,12 +73,8 @@ impl<const SMUDGE: usize> Pattern<SMUDGE> {
         vec[0..=pos]
             .iter()
             .rev()
-            .interleave_shortest(vec[pos + 1..].iter())
-            .chunks(2)
-            .into_iter()
-            .map(|ch| ch.collect_vec())
-            .filter(|v| v.len() == 2)
-            .map(|v| self.vec_diff(v[0], v[1]))
+            .zip(vec[pos + 1..].iter())
+            .map(|(v1, v2)| self.vec_diff(v1, v2))
             .sum::<usize>()
             == SMUDGE
     }
