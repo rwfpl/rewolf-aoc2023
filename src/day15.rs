@@ -55,38 +55,40 @@ struct Bx<'a> {
 }
 
 fn solution2(input: &str) -> usize {
-    let steps = input.split(',').map(Step::from).collect_vec();
     let mut boxes = (0..256).map(|_| Bx::default()).collect_vec();
-    steps.iter().for_each(|step| match step.op {
-        Operation::Dash => {
-            if let Some((i, _)) = boxes[step.bx as usize]
-                .lenses
-                .iter()
-                .enumerate()
-                .find(|(_, l)| l.label == step.label)
-            {
-                boxes[step.bx as usize].lenses.remove(i);
-            }
-        }
-        Operation::Focal(focal) => {
-            if let Some((i, _)) = boxes[step.bx as usize]
-                .lenses
-                .iter()
-                .enumerate()
-                .find(|(_, l)| l.label == step.label)
-            {
-                boxes[step.bx as usize].lenses[i] = Lens {
-                    label: step.label,
-                    focal,
+    input
+        .split(',')
+        .map(Step::from)
+        .for_each(|step| match step.op {
+            Operation::Dash => {
+                if let Some((i, _)) = boxes[step.bx as usize]
+                    .lenses
+                    .iter()
+                    .enumerate()
+                    .find(|(_, l)| l.label == step.label)
+                {
+                    boxes[step.bx as usize].lenses.remove(i);
                 }
-            } else {
-                boxes[step.bx as usize].lenses.push(Lens {
-                    label: step.label,
-                    focal,
-                })
             }
-        }
-    });
+            Operation::Focal(focal) => {
+                if let Some((i, _)) = boxes[step.bx as usize]
+                    .lenses
+                    .iter()
+                    .enumerate()
+                    .find(|(_, l)| l.label == step.label)
+                {
+                    boxes[step.bx as usize].lenses[i] = Lens {
+                        label: step.label,
+                        focal,
+                    }
+                } else {
+                    boxes[step.bx as usize].lenses.push(Lens {
+                        label: step.label,
+                        focal,
+                    })
+                }
+            }
+        });
     boxes
         .iter()
         .enumerate()
