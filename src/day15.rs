@@ -61,6 +61,20 @@ impl<'a> Bx<'a> {
             .enumerate()
             .find_map(|(i, l)| if l.label == label { Some(i) } else { None })
     }
+
+    fn remove_lens(&mut self, label: &str) {
+        if let Some(i) = self.find_lens_index(label) {
+            self.lenses.remove(i);
+        }
+    }
+
+    fn add_or_replace_lens(&mut self, label: &'a str, focal: u8) {
+        if let Some(i) = self.find_lens_index(label) {
+            self.lenses[i] = Lens { label, focal }
+        } else {
+            self.lenses.push(Lens { label, focal })
+        }
+    }
 }
 
 fn solution2(input: &str) -> usize {
@@ -69,23 +83,9 @@ fn solution2(input: &str) -> usize {
         .split(',')
         .map(Step::from)
         .for_each(|step| match step.op {
-            Operation::Dash => {
-                if let Some(i) = boxes[step.bx as usize].find_lens_index(step.label) {
-                    boxes[step.bx as usize].lenses.remove(i);
-                }
-            }
+            Operation::Dash => boxes[step.bx as usize].remove_lens(step.label),
             Operation::Focal(focal) => {
-                if let Some(i) = boxes[step.bx as usize].find_lens_index(step.label) {
-                    boxes[step.bx as usize].lenses[i] = Lens {
-                        label: step.label,
-                        focal,
-                    }
-                } else {
-                    boxes[step.bx as usize].lenses.push(Lens {
-                        label: step.label,
-                        focal,
-                    })
-                }
+                boxes[step.bx as usize].add_or_replace_lens(step.label, focal)
             }
         });
     boxes
