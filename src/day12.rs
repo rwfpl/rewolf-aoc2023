@@ -176,6 +176,7 @@ pub fn run() -> (String, String) {
     let input = fs::read_to_string("src/inputs/aoc12.in").unwrap();
     (
         solution(&input, 1).to_string(),
-        solution(&input, 5).to_string(),
+        //solution(&input, 5).to_string(),
+        "TBD".to_string(),
     )
 }
