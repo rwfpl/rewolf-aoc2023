@@ -54,6 +54,15 @@ struct Bx<'a> {
     lenses: Vec<Lens<'a>>,
 }
 
+impl<'a> Bx<'a> {
+    fn find_lens_index(&self, label: &str) -> Option<usize> {
+        self.lenses
+            .iter()
+            .enumerate()
+            .find_map(|(i, l)| if l.label == label { Some(i) } else { None })
+    }
+}
+
 fn solution2(input: &str) -> usize {
     let mut boxes = (0..256).map(|_| Bx::default()).collect_vec();
     input
@@ -61,22 +70,12 @@ fn solution2(input: &str) -> usize {
         .map(Step::from)
         .for_each(|step| match step.op {
             Operation::Dash => {
-                if let Some((i, _)) = boxes[step.bx as usize]
-                    .lenses
-                    .iter()
-                    .enumerate()
-                    .find(|(_, l)| l.label == step.label)
-                {
+                if let Some(i) = boxes[step.bx as usize].find_lens_index(step.label) {
                     boxes[step.bx as usize].lenses.remove(i);
                 }
             }
             Operation::Focal(focal) => {
-                if let Some((i, _)) = boxes[step.bx as usize]
-                    .lenses
-                    .iter()
-                    .enumerate()
-                    .find(|(_, l)| l.label == step.label)
-                {
+                if let Some(i) = boxes[step.bx as usize].find_lens_index(step.label) {
                     boxes[step.bx as usize].lenses[i] = Lens {
                         label: step.label,
                         focal,
