@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use std::{
     collections::{HashSet, VecDeque},
     fs,
@@ -183,10 +184,12 @@ fn solution2(input: &str) -> usize {
     let w = g.g[0].len();
     let h = g.g.len();
     let top_max = (0..w)
+        .into_par_iter()
         .map(|x| g.trace(Beam::from(&Point::from(x as i32, 0), Direction::Down)))
         .max()
         .unwrap();
     let bottom_max = (0..w)
+        .into_par_iter()
         .map(|x| {
             g.trace(Beam::from(
                 &Point::from(x as i32, h as i32 - 1),
@@ -196,10 +199,12 @@ fn solution2(input: &str) -> usize {
         .max()
         .unwrap();
     let left_max = (0..h)
+        .into_par_iter()
         .map(|y| g.trace(Beam::from(&Point::from(0, y as i32), Direction::Right)))
         .max()
         .unwrap();
     let right_max = (0..h)
+        .into_par_iter()
         .map(|y| {
             g.trace(Beam::from(
                 &Point::from(w as i32 - 1, y as i32),
