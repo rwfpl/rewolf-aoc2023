@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::{HashSet, VecDeque},
     fs,
