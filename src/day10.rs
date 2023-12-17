@@ -5,7 +5,7 @@ use std::{collections::HashSet, fs};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Point(i32, i32);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum Tile {
     Vertical([Point; 2]),
     Horizontal([Point; 2]),
@@ -198,9 +198,9 @@ impl Grid {
     }
 
     fn is_inside(&self, p: &Point) -> bool {
-        if let Tile::Ground = self.at(p) {
+        if Tile::Ground == *self.at(p) {
             let mut last_corner = Tile::Ground;
-            return ((p.0 + 1) as usize..self.tiles[0].len())
+            ((p.0 + 1) as usize..self.tiles[0].len())
                 .map(|x| {
                     match self.at(&Point(x as i32, p.1)) {
                         Tile::Vertical(_) => 1,
@@ -228,9 +228,10 @@ impl Grid {
                 })
                 .sum::<u32>()
                 & 1
-                != 0;
+                != 0
+        } else {
+            false
         }
-        false
     }
 }
 
