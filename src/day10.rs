@@ -1,6 +1,6 @@
-use std::{collections::HashSet, fs};
-
+use core::fmt;
 use itertools::Itertools;
+use std::{collections::HashSet, fs};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Point(i32, i32);
@@ -15,6 +15,25 @@ enum Tile {
     DownRight([Point; 2]),
     Start([Point; 2]),
     Ground,
+}
+
+impl fmt::Display for Tile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Vertical(_) => '│',
+                Self::Horizontal(_) => '─',
+                Self::UpRight(_) => '└',
+                Self::UpLeft(_) => '┘',
+                Self::DownLeft(_) => '┐',
+                Self::DownRight(_) => '┌',
+                Self::Start(_) => 'S',
+                Self::Ground => '.',
+            }
+        )
+    }
 }
 
 impl Tile {
@@ -59,6 +78,16 @@ struct Grid {
     start: Point,
 }
 
+impl fmt::Display for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.tiles.iter().map(|row| row.iter().join("")).join("\n")
+        )
+    }
+}
+
 impl From<&str> for Grid {
     fn from(s: &str) -> Self {
         let mut start = Point(0, 0);
@@ -77,7 +106,10 @@ impl From<&str> for Grid {
                     .collect_vec()
             })
             .collect_vec();
-        Self { tiles, start }
+
+        let mut r = Self { tiles, start };
+        r.update_starting_shape();
+        r
     }
 }
 
@@ -90,50 +122,135 @@ impl Grid {
         &self.tiles[p.1 as usize][p.0 as usize]
     }
 
-    fn get_starting_points(&self) -> Vec<Point> {
-        [Point(-1, 0), Point(0, -1), Point(1, 0), Point(0, 1)]
+    fn update_starting_shape(&mut self) {
+        let ps = [Point(-1, 0), Point(0, -1), Point(1, 0), Point(0, 1)]
             .iter()
-            .map(|p| Point(self.start.0 + p.0, self.start.1 + p.1))
-            .filter(|p| self.in_grid(p) && self.at(p).connects_to(&self.start))
-            .collect_vec()
+            .map(|p| (Point(self.start.0 + p.0, self.start.1 + p.1), p))
+            .filter_map(|(np, p)| {
+                if self.in_grid(&np) && self.at(&np).connects_to(&self.start) {
+                    Some(p)
+                } else {
+                    None
+                }
+            })
+            .collect_vec();
+        let conto = [
+            Point(self.start.0 + ps[0].0, self.start.1 + ps[0].1),
+            Point(self.start.0 + ps[1].0, self.start.1 + ps[1].1),
+        ];
+        self.tiles[self.start.1 as usize][self.start.0 as usize] = match ps[..] {
+            [Point(-1, 0), Point(1, 0)] => Tile::Horizontal(conto),
+            [Point(0, -1), Point(0, 1)] => Tile::Vertical(conto),
+            [Point(-1, 0), Point(0, -1)] => Tile::UpLeft(conto),
+            [Point(0, -1), Point(1, 0)] => Tile::UpRight(conto),
+            [Point(-1, 0), Point(0, 1)] => Tile::DownLeft(conto),
+            [Point(1, 0), Point(0, 1)] => Tile::DownRight(conto),
+            _ => panic!("(❀◦‿◦)"),
+        };
     }
 
-    fn get_next(&self, p: &Point, visited: &HashSet<Point>) -> Option<Point> {
+    fn get_next(&self, p: &Point, visited: &HashSet<Point>) -> Option<Vec<Point>> {
         let np = self
             .at(p)
             .get_next()
             .unwrap()
             .iter()
             .filter(|p| !visited.contains(p))
+            .cloned()
             .collect_vec();
-        assert!(np.len() < 2);
         if np.is_empty() {
             None
         } else {
-            Some(*np[0])
+            Some(np)
         }
     }
 
-    fn get_farthest_distance(&self) -> usize {
-        let mut cur = self.get_starting_points();
+    fn get_loop(&self) -> HashSet<Point> {
+        let mut cur = vec![self.start];
         let mut visited: HashSet<Point> = HashSet::from_iter(cur.iter().cloned());
-        visited.insert(self.start);
         loop {
             cur = cur
                 .iter()
                 .map_while(|p| self.get_next(p, &visited))
+                .flatten()
                 .collect_vec();
             if cur.len() < 2 {
                 break;
             }
             visited.extend(cur.iter());
         }
-        visited.len() / 2
+        visited
+    }
+
+    fn clean_garbage(&mut self) {
+        let lp = self.get_loop();
+        self.tiles.iter_mut().enumerate().for_each(|(y, row)| {
+            row.iter_mut().enumerate().for_each(|(x, tile)| {
+                if !lp.contains(&Point(x as i32, y as i32)) {
+                    *tile = Tile::Ground
+                }
+            })
+        });
+    }
+
+    fn get_farthest_distance(&self) -> usize {
+        self.get_loop().len() / 2
+    }
+
+    fn is_inside(&self, p: &Point) -> bool {
+        if let Tile::Ground = self.at(p) {
+            let mut last_corner = Tile::Ground;
+            return ((p.0 + 1) as usize..self.tiles[0].len())
+                .map(|x| {
+                    match self.at(&Point(x as i32, p.1)) {
+                        Tile::Vertical(_) => 1,
+                        Tile::UpRight(c) => {
+                            last_corner = Tile::UpRight(*c);
+                            1
+                        }
+                        Tile::DownRight(c) => {
+                            last_corner = Tile::DownRight(*c);
+                            1
+                        }
+                        Tile::UpLeft(_) => match last_corner {
+                            Tile::UpRight(_) => 1,
+                            Tile::DownRight(_) => 0,
+                            _ => panic!("ᶘ ᵒᴥᵒᶅ"),
+                        },
+                        Tile::DownLeft(_) => match last_corner {
+                            Tile::UpRight(_) => 0,
+                            Tile::DownRight(_) => 1,
+                            _ => panic!("ᶘ ᵒᴥᵒᶅ"),
+                        },
+                        _ => 0,
+                    }
+                    //
+                })
+                .sum::<u32>()
+                & 1
+                != 0;
+        }
+        false
     }
 }
 
 fn solution(input: &str) -> usize {
     Grid::from(input).get_farthest_distance()
+}
+
+fn solution2(input: &str) -> usize {
+    let mut g = Grid::from(input);
+    g.clean_garbage();
+    g.tiles
+        .iter()
+        .enumerate()
+        .map(|(y, row)| {
+            row.iter()
+                .enumerate()
+                .filter(|(x, _)| g.is_inside(&Point(*x as i32, y as i32)))
+                .count()
+        })
+        .sum()
 }
 
 #[test]
@@ -144,9 +261,15 @@ fn test_run() {
     assert_eq!(solution(&input), 8);
     let input = fs::read_to_string("src/inputs/aoc10.in").unwrap();
     assert_eq!(solution(&input), 7093);
+    assert_eq!(solution2(&input), 0);
+
+    let input = fs::read_to_string("src/inputs/aoc10s3.in").unwrap();
+    assert_eq!(solution2(&input), 8);
+    let input = fs::read_to_string("src/inputs/aoc10s4.in").unwrap();
+    assert_eq!(solution2(&input), 10);
 }
 
 pub fn run() -> (String, String) {
     let input = fs::read_to_string("src/inputs/aoc10.in").unwrap();
-    (solution(&input).to_string(), "TBD".to_string())
+    (solution(&input).to_string(), solution2(&input).to_string())
 }
