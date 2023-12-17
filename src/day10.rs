@@ -261,7 +261,7 @@ fn test_run() {
     assert_eq!(solution(&input), 8);
     let input = fs::read_to_string("src/inputs/aoc10.in").unwrap();
     assert_eq!(solution(&input), 7093);
-    assert_eq!(solution2(&input), 0);
+    assert_eq!(solution2(&input), 407);
 
     let input = fs::read_to_string("src/inputs/aoc10s3.in").unwrap();
     assert_eq!(solution2(&input), 8);
