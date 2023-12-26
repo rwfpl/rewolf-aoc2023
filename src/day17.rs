@@ -39,8 +39,12 @@ impl<const MIN: usize, const MAX: usize> Point<MIN, MAX> {
         Self::from_with_value(x, y, 0, dir)
     }
 
+    fn tuple(self) -> (i32, i32) {
+        (self.x, self.y)
+    }
+
     fn get_surroundings(&self) -> Vec<Point<MIN, MAX>> {
-        let mut r = Vec::new();
+        let mut r = Vec::with_capacity(3);
         match self.dir {
             Direction::Down(v) => {
                 r.push(Point::from(
@@ -102,6 +106,48 @@ struct Grid<const MIN: usize, const MAX: usize> {
     g: Vec<Vec<u8>>,
 }
 
+#[derive(Copy, Clone)]
+struct GridCacheItem {
+    value: usize,
+    visited: bool,
+}
+
+impl GridCacheItem {
+    fn from(value: usize, visited: bool) -> Self {
+        Self { value, visited }
+    }
+}
+
+struct GridCache<const MIN: usize, const MAX: usize> {
+    gc: Vec<Vec<HashMap<Direction, GridCacheItem>>>,
+}
+
+impl<const MIN: usize, const MAX: usize> GridCache<MIN, MAX> {
+    fn new(width: usize, height: usize) -> Self {
+        let cachedef = || -> HashMap<Direction, GridCacheItem> {
+            let gci = GridCacheItem::from(usize::MAX, false);
+            HashMap::from_iter(
+                (MIN..=MAX)
+                    .map(|x| (Direction::Down(x), gci))
+                    .chain((MIN..=MAX).map(|x| (Direction::Up(x), gci)))
+                    .chain((MIN..=MAX).map(|x| (Direction::Left(x), gci)))
+                    .chain((MIN..=MAX).map(|x| (Direction::Right(x), gci))),
+            )
+        };
+        Self {
+            gc: vec![vec![cachedef(); width]; height],
+        }
+    }
+
+    fn update(&mut self, x: usize, y: usize, dir: &Direction, gci: GridCacheItem) {
+        *self.gc[y][x].get_mut(dir).unwrap() = gci;
+    }
+
+    fn get_mut(&mut self, x: i32, y: i32, dir: &Direction) -> &mut GridCacheItem {
+        self.gc[y as usize][x as usize].get_mut(dir).unwrap()
+    }
+}
+
 impl<const MIN: usize, const MAX: usize> From<&str> for Grid<MIN, MAX> {
     fn from(s: &str) -> Self {
         Self {
@@ -121,18 +167,18 @@ impl<const MIN: usize, const MAX: usize> Grid<MIN, MAX> {
         p.x >= 0 && p.x < self.g[0].len() as i32 && p.y >= 0 && p.y < self.g.len() as i32
     }
 
-    fn get_vector_value(&self, start: &Point<MIN, MAX>, end: &Point<MIN, MAX>) -> usize {
-        let xdiff = (start.x - end.x).abs();
-        let ydiff = (start.y - end.y).abs();
-        let xsign = (end.x - start.x).signum();
-        let ysign = (end.y - start.y).signum();
+    fn get_vector_value(&self, start: (i32, i32), end: (i32, i32)) -> usize {
+        let xdiff = (start.0 - end.0).abs();
+        let ydiff = (start.1 - end.1).abs();
         if xdiff != 0 {
+            let xsign = (end.0 - start.0).signum();
             (1..=xdiff)
-                .map(|x| self.g[end.y as usize][(start.x + x * xsign) as usize] as usize)
+                .map(|x| self.g[end.1 as usize][(start.0 + x * xsign) as usize] as usize)
                 .sum()
         } else if ydiff != 0 {
+            let ysign = (end.1 - start.1).signum();
             (1..=ydiff)
-                .map(|y| self.g[(start.y + y * ysign) as usize][end.x as usize] as usize)
+                .map(|y| self.g[(start.1 + y * ysign) as usize][end.0 as usize] as usize)
                 .sum()
         } else {
             panic!(":(")
@@ -140,65 +186,49 @@ impl<const MIN: usize, const MAX: usize> Grid<MIN, MAX> {
     }
 
     fn dij(&self) -> usize {
-        let hmmax = || -> HashMap<Direction, usize> {
-            HashMap::from_iter(
-                (MIN..=MAX)
-                    .map(|x| (Direction::Down(x), usize::MAX))
-                    .chain((MIN..=MAX).map(|x| (Direction::Up(x), usize::MAX)))
-                    .chain((MIN..=MAX).map(|x| (Direction::Left(x), usize::MAX)))
-                    .chain((MIN..=MAX).map(|x| (Direction::Right(x), usize::MAX))),
-            )
-        };
-        let hmfalse = || -> HashMap<Direction, bool> {
-            HashMap::from_iter(
-                (MIN..=MAX)
-                    .map(|x| (Direction::Down(x), false))
-                    .chain((MIN..=MAX).map(|x| (Direction::Up(x), false)))
-                    .chain((MIN..=MAX).map(|x| (Direction::Left(x), false)))
-                    .chain((MIN..=MAX).map(|x| (Direction::Right(x), false))),
-            )
-        };
-        let mut risks = vec![vec![hmmax(); self.g[0].len()]; self.g.len()];
-        let mut visited = vec![vec![hmfalse(); self.g[0].len()]; self.g.len()];
+        let mut grid_cache = GridCache::<MIN, MAX>::new(self.g[0].len(), self.g.len());
         let mut to_visit: BinaryHeap<Point<MIN, MAX>> = BinaryHeap::new();
         to_visit.push(Point::from(0, MIN as i32, Direction::Down(MIN)));
         to_visit.push(Point::from(MIN as i32, 0, Direction::Right(MIN)));
-        *risks[MIN][0].get_mut(&Direction::Down(MIN)).unwrap() = self.get_vector_value(
-            &Point::from(0, 0, Direction::Down(1)),
-            &Point::from(0, MIN as i32, Direction::Down(1)),
+        grid_cache.update(
+            0,
+            MIN,
+            &Direction::Down(MIN),
+            GridCacheItem::from(self.get_vector_value((0, 0), (0, MIN as i32)), false),
         );
-        *risks[0][MIN].get_mut(&Direction::Right(MIN)).unwrap() = self.get_vector_value(
-            &Point::from(0, 0, Direction::Right(1)),
-            &Point::from(MIN as i32, 0, Direction::Right(1)),
+        grid_cache.update(
+            MIN,
+            0,
+            &Direction::Right(MIN),
+            GridCacheItem::from(self.get_vector_value((0, 0), (MIN as i32, 0)), false),
         );
         let end = (self.g[0].len() - 1, self.g.len() - 1);
         while !to_visit.is_empty() {
             let current = to_visit.pop().unwrap();
-            if visited[current.y as usize][current.x as usize][&current.dir] {
+            let from_cache = grid_cache.get_mut(current.x, current.y, &current.dir);
+            if from_cache.visited {
                 continue;
             }
-            *visited[current.y as usize][current.x as usize]
-                .get_mut(&current.dir)
-                .unwrap() = true;
-            let cv = risks[current.y as usize][current.x as usize][&current.dir] as usize;
+            from_cache.visited = true;
+            let cv = from_cache.value;
             current.get_surroundings().iter().for_each(|sp| {
-                if self.in_grid(sp) && !visited[sp.y as usize][sp.x as usize][&sp.dir] {
-                    let spv = self.get_vector_value(&current, sp);
-                    if cv + spv < risks[sp.y as usize][sp.x as usize][&sp.dir] {
-                        *risks[sp.y as usize][sp.x as usize]
-                            .get_mut(&sp.dir)
-                            .unwrap() = cv + spv;
+                if self.in_grid(sp) {
+                    let from_cache = grid_cache.get_mut(sp.x, sp.y, &sp.dir);
+                    if !from_cache.visited {
+                        from_cache.value = std::cmp::min(
+                            cv + self.get_vector_value(current.tuple(), sp.tuple()),
+                            from_cache.value,
+                        );
+                        to_visit.push(Point::from_with_value(sp.x, sp.y, from_cache.value, sp.dir));
                     }
-                    to_visit.push(Point::from_with_value(
-                        sp.x,
-                        sp.y,
-                        risks[sp.y as usize][sp.x as usize][&sp.dir],
-                        sp.dir,
-                    ));
                 }
             });
         }
-        *risks[end.1][end.0].values().min().unwrap()
+        grid_cache.gc[end.1][end.0]
+            .values()
+            .map(|t| t.value)
+            .min()
+            .unwrap()
     }
 }
 
