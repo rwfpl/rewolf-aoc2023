@@ -31,8 +31,12 @@ impl<const MIN: usize, const MAX: usize> Ord for Point<MIN, MAX> {
 }
 
 impl<const MIN: usize, const MAX: usize> Point<MIN, MAX> {
-    fn from(x: i32, y: i32, value: usize, dir: Direction) -> Self {
+    fn from_with_value(x: i32, y: i32, value: usize, dir: Direction) -> Self {
         Self { x, y, value, dir }
+    }
+
+    fn from(x: i32, y: i32, dir: Direction) -> Self {
+        Self::from_with_value(x, y, 0, dir)
     }
 
     fn get_surroundings(&self) -> Vec<Point<MIN, MAX>> {
@@ -42,68 +46,52 @@ impl<const MIN: usize, const MAX: usize> Point<MIN, MAX> {
                 r.push(Point::from(
                     self.x - MIN as i32,
                     self.y,
-                    0,
                     Direction::Left(MIN),
                 ));
                 r.push(Point::from(
                     self.x + MIN as i32,
                     self.y,
-                    0,
                     Direction::Right(MIN),
                 ));
                 if v < MAX {
-                    r.push(Point::from(self.x, self.y + 1, 0, Direction::Down(v + 1)))
+                    r.push(Point::from(self.x, self.y + 1, Direction::Down(v + 1)))
                 }
             }
             Direction::Up(v) => {
                 r.push(Point::from(
                     self.x - MIN as i32,
                     self.y,
-                    0,
                     Direction::Left(MIN),
                 ));
                 r.push(Point::from(
                     self.x + MIN as i32,
                     self.y,
-                    0,
                     Direction::Right(MIN),
                 ));
                 if v < MAX {
-                    r.push(Point::from(self.x, self.y - 1, 0, Direction::Up(v + 1)))
+                    r.push(Point::from(self.x, self.y - 1, Direction::Up(v + 1)))
                 }
             }
             Direction::Left(v) => {
-                r.push(Point::from(
-                    self.x,
-                    self.y - MIN as i32,
-                    0,
-                    Direction::Up(MIN),
-                ));
+                r.push(Point::from(self.x, self.y - MIN as i32, Direction::Up(MIN)));
                 r.push(Point::from(
                     self.x,
                     self.y + MIN as i32,
-                    0,
                     Direction::Down(MIN),
                 ));
                 if v < MAX {
-                    r.push(Point::from(self.x - 1, self.y, 0, Direction::Left(v + 1)))
+                    r.push(Point::from(self.x - 1, self.y, Direction::Left(v + 1)))
                 }
             }
             Direction::Right(v) => {
-                r.push(Point::from(
-                    self.x,
-                    self.y - MIN as i32,
-                    0,
-                    Direction::Up(MIN),
-                ));
+                r.push(Point::from(self.x, self.y - MIN as i32, Direction::Up(MIN)));
                 r.push(Point::from(
                     self.x,
                     self.y + MIN as i32,
-                    0,
                     Direction::Down(MIN),
                 ));
                 if v < MAX {
-                    r.push(Point::from(self.x + 1, self.y, 0, Direction::Right(v + 1)))
+                    r.push(Point::from(self.x + 1, self.y, Direction::Right(v + 1)))
                 }
             }
         }
@@ -154,34 +142,34 @@ impl<const MIN: usize, const MAX: usize> Grid<MIN, MAX> {
     fn dij(&self) -> usize {
         let hmmax = || -> HashMap<Direction, usize> {
             HashMap::from_iter(
-                (1..=MAX)
+                (MIN..=MAX)
                     .map(|x| (Direction::Down(x), usize::MAX))
-                    .chain((1..=MAX).map(|x| (Direction::Up(x), usize::MAX)))
-                    .chain((1..=MAX).map(|x| (Direction::Left(x), usize::MAX)))
-                    .chain((1..=MAX).map(|x| (Direction::Right(x), usize::MAX))),
+                    .chain((MIN..=MAX).map(|x| (Direction::Up(x), usize::MAX)))
+                    .chain((MIN..=MAX).map(|x| (Direction::Left(x), usize::MAX)))
+                    .chain((MIN..=MAX).map(|x| (Direction::Right(x), usize::MAX))),
             )
         };
         let hmfalse = || -> HashMap<Direction, bool> {
             HashMap::from_iter(
-                (1..=MAX)
+                (MIN..=MAX)
                     .map(|x| (Direction::Down(x), false))
-                    .chain((1..=MAX).map(|x| (Direction::Up(x), false)))
-                    .chain((1..=MAX).map(|x| (Direction::Left(x), false)))
-                    .chain((1..=MAX).map(|x| (Direction::Right(x), false))),
+                    .chain((MIN..=MAX).map(|x| (Direction::Up(x), false)))
+                    .chain((MIN..=MAX).map(|x| (Direction::Left(x), false)))
+                    .chain((MIN..=MAX).map(|x| (Direction::Right(x), false))),
             )
         };
         let mut risks = vec![vec![hmmax(); self.g[0].len()]; self.g.len()];
         let mut visited = vec![vec![hmfalse(); self.g[0].len()]; self.g.len()];
         let mut to_visit: BinaryHeap<Point<MIN, MAX>> = BinaryHeap::new();
-        to_visit.push(Point::from(0, MIN as i32, 0, Direction::Down(MIN)));
-        to_visit.push(Point::from(MIN as i32, 0, 0, Direction::Right(MIN)));
+        to_visit.push(Point::from(0, MIN as i32, Direction::Down(MIN)));
+        to_visit.push(Point::from(MIN as i32, 0, Direction::Right(MIN)));
         *risks[MIN][0].get_mut(&Direction::Down(MIN)).unwrap() = self.get_vector_value(
-            &Point::from(0, 0, 0, Direction::Down(1)),
-            &Point::from(0, MIN as i32, 0, Direction::Down(1)),
+            &Point::from(0, 0, Direction::Down(1)),
+            &Point::from(0, MIN as i32, Direction::Down(1)),
         );
         *risks[0][MIN].get_mut(&Direction::Right(MIN)).unwrap() = self.get_vector_value(
-            &Point::from(0, 0, 0, Direction::Right(1)),
-            &Point::from(MIN as i32, 0, 0, Direction::Right(1)),
+            &Point::from(0, 0, Direction::Right(1)),
+            &Point::from(MIN as i32, 0, Direction::Right(1)),
         );
         let end = (self.g[0].len() - 1, self.g.len() - 1);
         while !to_visit.is_empty() {
@@ -201,7 +189,7 @@ impl<const MIN: usize, const MAX: usize> Grid<MIN, MAX> {
                             .get_mut(&sp.dir)
                             .unwrap() = cv + spv;
                     }
-                    to_visit.push(Point::from(
+                    to_visit.push(Point::from_with_value(
                         sp.x,
                         sp.y,
                         risks[sp.y as usize][sp.x as usize][&sp.dir],
