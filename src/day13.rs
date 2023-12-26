@@ -108,7 +108,8 @@ impl<const SMUDGE: usize> Pattern<SMUDGE> {
 
 fn solution<const SMUDGE: usize>(input: &str) -> usize {
     input
-        .split("\r\n\r\n")
+        .replace("\r\n", "\n")
+        .split("\n\n")
         .map(|l| Pattern::<SMUDGE>::from(l).find_mirror_score())
         .sum()
 }
